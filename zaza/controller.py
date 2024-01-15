@@ -25,7 +25,8 @@ import zaza.utilities.exceptions
 
 
 async def async_add_model(
-        model_name, config=None, cloud_name=None, region=None):
+    model_name, config=None, cloud_name=None, credential_name=None, region=None
+):
     """Add a model to the current controller.
 
     :param model_name: Name to give the new model.
@@ -39,11 +40,17 @@ async def async_add_model(
     await controller.connect()
     logging.debug("Adding model {}".format(model_name))
     model = await controller.add_model(
-        model_name, config=config, cloud_name=cloud_name, region=region)
+        model_name,
+        config=config,
+        cloud_name=cloud_name,
+        region=region,
+        credential_name=credential_name,
+    )
     # issue/135 It is necessary to disconnect the model here or async spews
     # tracebacks even during a successful run.
     await model.disconnect()
     await controller.disconnect()
+
 
 add_model = sync_wrapper(async_add_model)
 
@@ -58,18 +65,19 @@ async def async_destroy_model(model_name):
     try:
         await controller.connect()
         logging.info("Destroying model {}".format(model_name))
-        await controller.destroy_model(model_name,
-                                       destroy_storage=True,
-                                       force=True,
-                                       max_wait=600)
+        await controller.destroy_model(
+            model_name, destroy_storage=True, force=True, max_wait=600
+        )
         # The model ought to be destroyed by now.  Let's make sure, and if not,
         # raise an error.  Even if the model has been destroyed, it's still
         # hangs around in the .list_models() for a little while; retry until it
         # goes away, or that fails.
         attempt = 1
         while True:
-            logging.info("Waiting for model to be fully destroyed: "
-                         "attempt: {}".format(attempt))
+            logging.info(
+                "Waiting for model to be fully destroyed: "
+                "attempt: {}".format(attempt)
+            )
             remaining_models = await controller.list_models()
             if model_name not in remaining_models:
                 break
@@ -77,7 +85,8 @@ async def async_destroy_model(model_name):
             attempt += 1
             if attempt > 20:
                 raise zaza.utilities.exceptions.DestroyModelFailed(
-                    "Destroying model {} failed." .format(model_name))
+                    "Destroying model {} failed.".format(model_name)
+                )
 
         logging.info("Model {} destroyed.".format(model_name))
     finally:
@@ -85,6 +94,7 @@ async def async_destroy_model(model_name):
             await controller.disconnect()
         except Exception as e:
             logging.error("Couldn't disconnect from model: {}".format(str(e)))
+
 
 destroy_model = sync_wrapper(async_destroy_model)
 
@@ -103,6 +113,7 @@ async def async_cloud(name=None):
     cloud = await controller.cloud(name=name)
     await controller.disconnect()
     return cloud
+
 
 cloud = sync_wrapper(async_cloud)
 
@@ -132,6 +143,7 @@ async def async_get_cloud():
     await controller.disconnect()
     return cloud
 
+
 get_cloud = sync_wrapper(async_get_cloud)
 
 
@@ -146,6 +158,7 @@ async def async_list_models():
     models = await controller.list_models()
     await controller.disconnect()
     return models
+
 
 list_models = sync_wrapper(async_list_models)
 
